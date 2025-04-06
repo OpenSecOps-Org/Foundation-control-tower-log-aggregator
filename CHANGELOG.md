@@ -1,5 +1,8 @@
 # Change Log
 
+## v1.5.3
+    * Updated publish.zsh to support dual-remote publishing to CloudSecOps-Org repositories.
+
 ## v1.5.2
     * Added connection pooling to most lambdas.
 
