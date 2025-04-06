@@ -206,9 +206,9 @@ sam build && sam deploy
 If you need to change the parameter overrides, you can do so by running `sam deploy --guided` again, or you can simply change the overrides in `samconfig.toml` and just build and deploy using the shorter form given above.
 
 
-## Installation as Part of Delegat Foundation
+## Installation as Part of CloudSecOps Foundation
 
-It's the usual configuration in `Delegat-Install` and then `./deploy`. Or just let `Delegat-Install` handle it using a `./deploy-all Foundation`.
+It's the usual configuration in `CloudSecOps-Installer` and then `./deploy`. Or just let `CloudSecOps-Installer` handle it using a `./deploy-all Foundation`.
 
 
 ## Processing Old Main Logs
