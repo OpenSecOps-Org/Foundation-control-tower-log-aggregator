@@ -154,7 +154,7 @@ With the additional log buckets specified by `OtherBuckets` we can make no such 
 means that there is room for an optimisation: if _all_ log files in a bucket exceed the configurable
 minimum size for Glacier, these files are simply copied individually to the destination without aggregating 
 them together into larger files, thus further saving processing time and S3 costs. This is very useful when
-processing high-volume CloudWatch logs using utilities such as https://github.com/Delegat-AB/Foundation-CloudWatch2S3.
+processing high-volume CloudWatch logs using utilities such as https://github.com/OpenSecOps-Org/Foundation-CloudWatch2S3.
 
 
 ## Stand-Alone Installation
