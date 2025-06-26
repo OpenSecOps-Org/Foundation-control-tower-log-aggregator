@@ -110,6 +110,8 @@ def script_parameters_to_dictionary(script_name, params, repo_name):
     result = {}
     for k, v in section.items():
         v = dereference(v, params)
+        if isinstance(v, list):
+            v = ','.join(v)  # Convert list to comma-separated string
         result[k] = v
     return result
 
@@ -125,6 +127,10 @@ def dereference(value, params):
         main_region = params.get('main-region', '')
         other_regions = params.get('other-regions', [])
         
+        # Handle case where other-regions is a comma-separated string (from script context)
+        if isinstance(other_regions, str):
+            other_regions = [r.strip() for r in other_regions.split(',') if r.strip()]
+        
         # Add main region as a new first element
         all_regions = [main_region] + other_regions
 
@@ -136,7 +142,11 @@ def dereference(value, params):
         def substitute(m):
             param = m.group(1)
             if param in params:
-                return params[param]
+                result = params[param]
+                # Convert lists to comma-separated strings for script arguments
+                if isinstance(result, list):
+                    return ','.join(result)
+                return result
             else:
                 # If not found in params, try to get account data from TOML
                 account_data = get_account_data_from_toml(param, 'id')
@@ -317,7 +327,11 @@ def process_scripts(scripts, repo_name, params, dry_run, verbose):
                 cmd.append(json_string)
             
             else:
-                cmd.append(dereference(v, our_params))
+                result = dereference(v, our_params)
+                if isinstance(result, list):
+                    cmd.append(','.join(result))  # Convert list to comma-separated string
+                else:
+                    cmd.append(result)
 
         if verbose:
             printc(GRAY, '')
