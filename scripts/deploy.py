@@ -307,6 +307,8 @@ def process_scripts(scripts, repo_name, params, dry_run, verbose):
 
         if dry_run:
             cmd.append('--dry-run')
+        if verbose:
+            cmd.append('--verbose')
 
         for k, v in script.get('args', []):
             cmd.append(k)
