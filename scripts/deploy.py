@@ -110,8 +110,6 @@ def script_parameters_to_dictionary(script_name, params, repo_name):
     result = {}
     for k, v in section.items():
         v = dereference(v, params)
-        if isinstance(v, list):
-            v = ','.join(v)  # Convert list to comma-separated string
         result[k] = v
     return result
 
@@ -329,11 +327,22 @@ def process_scripts(scripts, repo_name, params, dry_run, verbose):
                 cmd.append(json_string)
             
             else:
-                result = dereference(v, our_params)
-                if isinstance(result, list):
-                    cmd.append(','.join(result))  # Convert list to comma-separated string
+                # Check if this parameter was already resolved in our_params
+                param_key = v.strip('{}') if v.startswith('{') and v.endswith('}') else None
+                if param_key and param_key in our_params:
+                    # Use the already-resolved value from our_params
+                    result = our_params[param_key]
+                    if isinstance(result, list):
+                        cmd.append(','.join(result))  # Convert list to comma-separated string
+                    else:
+                        cmd.append(result)
                 else:
-                    cmd.append(result)
+                    # Fall back to dereference for unresolved parameters
+                    result = dereference(v, our_params)
+                    if isinstance(result, list):
+                        cmd.append(','.join(result))  # Convert list to comma-separated string
+                    else:
+                        cmd.append(result)
 
         if verbose:
             printc(GRAY, '')
