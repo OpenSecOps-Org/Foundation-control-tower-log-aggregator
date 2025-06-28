@@ -1,5 +1,29 @@
 #!/usr/bin/env python3
 
+"""
+OpenSecOps Foundation Component Deployment Script
+
+This script provides unified deployment orchestration for OpenSecOps Foundation components,
+supporting multiple deployment patterns (SAM, CloudFormation, Scripts) with sophisticated
+parameter resolution and cross-account operations.
+
+Key Features:
+- Parameter resolution with cross-references ({parameter-name} syntax)
+- Computed parameters like {all-regions} from main-region + other-regions  
+- Cross-account role assumption for organization-wide deployments
+- Support for SAM serverless applications, CloudFormation infrastructure, and custom scripts
+- Dry-run mode for safe testing and validation
+- Verbose logging for debugging and monitoring
+
+Usage:
+  ./deploy [--dry-run] [--verbose]
+
+This script is distributed to all Foundation components via the refresh mechanism to ensure
+consistent deployment behavior across the OpenSecOps ecosystem.
+
+For detailed architecture information, see: Installer/ARCHITECTURE.md
+"""
+
 import os
 import sys
 import subprocess
