@@ -349,14 +349,49 @@ if [[ "$HAS_OPENSECOPS_REMOTE" == true && -n "$SBOM_PATH" ]]; then
     OWNER_REPO="OpenSecOps-Org/${COMPONENT_NAME}"
     NOTES_FILE="${SBOM_TMP_DIR}/release-notes.md"
 
-    # Slice the current version's section out of CHANGELOG.md.
+    # Slice the current version's section out of CHANGELOG.md and
+    # wrap each long bullet at 72 columns so the rendered release-notes
+    # page is readable rather than one giant paragraph per bullet.
+    # Continuation lines align with the bullet's content (after `* `).
     # Pattern: from `## $TAG_VERSION` to (but not including) the next
     # `## v` heading or EOF.
     if [[ -f CHANGELOG.md ]]; then
         awk -v ver="$TAG_VERSION" '
             /^## v/ { p = ($2 == ver); next }
             p
-        ' CHANGELOG.md > "$NOTES_FILE"
+        ' CHANGELOG.md \
+        | uv run --no-project --quiet --python ">=3.11" python -c "$(cat <<'PYEOF'
+import re, sys, textwrap
+WIDTH = 80
+bullet_re = re.compile(r'^(\s*\*\s+)(.*)$')
+for line in sys.stdin:
+    line = line.rstrip('\n')
+    if not line.strip():
+        print(line)
+        continue
+    m = bullet_re.match(line)
+    if m:
+        prefix, content = m.group(1), m.group(2)
+        print(textwrap.fill(
+            content,
+            width=WIDTH,
+            initial_indent=prefix,
+            subsequent_indent=' ' * len(prefix),
+            break_long_words=False,
+            break_on_hyphens=False,
+        ))
+    else:
+        leading = re.match(r'^(\s*)', line).group(1)
+        print(textwrap.fill(
+            line[len(leading):],
+            width=WIDTH,
+            initial_indent=leading,
+            subsequent_indent=leading,
+            break_long_words=False,
+            break_on_hyphens=False,
+        ))
+PYEOF
+)" > "$NOTES_FILE"
     else
         echo "Release ${TAG_VERSION}." > "$NOTES_FILE"
     fi
