@@ -361,9 +361,15 @@ if [[ "$HAS_OPENSECOPS_REMOTE" == true && -n "$SBOM_PATH" ]]; then
             p
         ' CHANGELOG.md \
         | uv run --no-project --quiet --python ">=3.11" python -c "$(cat <<'PYEOF'
+# Wrap each bullet at WIDTH columns. The CHANGELOG source uses
+# `    * ...` (4-space-indented bullets) for human readability, but
+# GitHub-flavored Markdown treats 4+ leading spaces as a code-block
+# fence and renders the entire body in a fixed-width font. So we
+# dedent every bullet to column 1 (`* ...`) and set continuation
+# indent to 2 spaces (aligning with the content after `* `).
 import re, sys, textwrap
 WIDTH = 80
-bullet_re = re.compile(r'^(\s*\*\s+)(.*)$')
+bullet_re = re.compile(r'^\s*\*\s+(.*)$')
 for line in sys.stdin:
     line = line.rstrip('\n')
     if not line.strip():
@@ -371,25 +377,19 @@ for line in sys.stdin:
         continue
     m = bullet_re.match(line)
     if m:
-        prefix, content = m.group(1), m.group(2)
+        content = m.group(1)
         print(textwrap.fill(
             content,
             width=WIDTH,
-            initial_indent=prefix,
-            subsequent_indent=' ' * len(prefix),
+            initial_indent='* ',
+            subsequent_indent='  ',
             break_long_words=False,
             break_on_hyphens=False,
         ))
     else:
-        leading = re.match(r'^(\s*)', line).group(1)
-        print(textwrap.fill(
-            line[len(leading):],
-            width=WIDTH,
-            initial_indent=leading,
-            subsequent_indent=leading,
-            break_long_words=False,
-            break_on_hyphens=False,
-        ))
+        # Non-bullet line: preserve original (also dedent leading space
+        # so it doesn't accidentally become a code block).
+        print(line.lstrip())
 PYEOF
 )" > "$NOTES_FILE"
     else
