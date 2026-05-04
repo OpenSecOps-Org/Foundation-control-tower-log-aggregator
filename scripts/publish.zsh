@@ -366,6 +366,22 @@ if [[ "$REPO_IS_CONVERTED" == true && "$HAS_OPENSECOPS_REMOTE" == true ]]; then
         echo "             or see https://docs.sigstore.dev/cosign/installation/"
         exit 1
     fi
+
+    # Re-check GitHub status here too: the early pre-flight (right after
+    # component-identity detection) catches a degraded GH before we burn
+    # time on gate/emit/sign, but GH can degrade during the multi-minute
+    # run as well. This second check fires right before the destructive
+    # phases (push branches, GH release) so a mid-run degradation aborts
+    # us cleanly without leaving partial state behind.
+    GH_STATUS=$(curl -sS --max-time 10 https://www.githubstatus.com/api/v2/status.json 2>/dev/null \
+                  | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"]["indicator"])' 2>/dev/null)
+    if [[ -z "$GH_STATUS" ]]; then
+        echo "Warning: could not reach githubstatus.com — proceeding anyway."
+    elif [[ "$GH_STATUS" != "none" ]]; then
+        echo "Error: GitHub reports status '$GH_STATUS' (degraded mid-run). Aborting"
+        echo "  before any destructive operation. Re-run when GitHub is all-clear."
+        exit 1
+    fi
 fi
 
 # Check if the tag already exists
