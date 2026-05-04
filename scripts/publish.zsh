@@ -120,6 +120,25 @@ else
     HAS_OPENSECOPS_REMOTE=false
 fi
 
+# --- GitHub status pre-flight (FIRST real-run check) ---------------------
+# Run this BEFORE the gate, emit, or sign — those are minutes of work and
+# we don't want to burn them only to fail at GitHub Release creation.
+# The pre-flight is skipped in dry-run mode (dry-run is read-only and
+# doesn't talk to GitHub) and for unconverted/no-OpenSecOps repos
+# (oldtime publish doesn't go through gh release create at all).
+if [[ "$DRY_RUN" != true && "$REPO_IS_CONVERTED" == true && "$HAS_OPENSECOPS_REMOTE" == true ]]; then
+    GH_STATUS=$(curl -sS --max-time 10 https://www.githubstatus.com/api/v2/status.json 2>/dev/null \
+                  | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"]["indicator"])' 2>/dev/null)
+    if [[ -z "$GH_STATUS" ]]; then
+        echo "Warning: could not reach githubstatus.com — proceeding anyway."
+    elif [[ "$GH_STATUS" != "none" ]]; then
+        echo "Error: GitHub reports status '$GH_STATUS' (not 'none'). Release-asset"
+        echo "  upload is the most fragile step and reliably fails during degradation."
+        echo "  → check https://www.githubstatus.com/ and retry when it's all-clear."
+        exit 1
+    fi
+fi
+
 # --- Defaults shared by both modes ----------------------------------------
 SBOM_TMP_DIR=""
 SBOM_PATH=""
@@ -345,20 +364,6 @@ if [[ "$REPO_IS_CONVERTED" == true && "$HAS_OPENSECOPS_REMOTE" == true ]]; then
         echo "Error: cosign not on PATH — required to sign release artefacts."
         echo "  → install: brew install cosign  (macOS)"
         echo "             or see https://docs.sigstore.dev/cosign/installation/"
-        exit 1
-    fi
-
-    # GitHub status pre-flight: abort if GitHub is degraded so we don't
-    # ship into a flaky API and end up with a tag-pushed-but-no-release
-    # half-state. Indicator values: none | minor | major | critical.
-    GH_STATUS=$(curl -sS --max-time 10 https://www.githubstatus.com/api/v2/status.json 2>/dev/null \
-                  | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"]["indicator"])' 2>/dev/null)
-    if [[ -z "$GH_STATUS" ]]; then
-        echo "Warning: could not reach githubstatus.com — proceeding anyway."
-    elif [[ "$GH_STATUS" != "none" ]]; then
-        echo "Error: GitHub reports status '$GH_STATUS' (not 'none'). Release-asset"
-        echo "  upload is the most fragile step and reliably fails during degradation."
-        echo "  → check https://www.githubstatus.com/ and retry when it's all-clear."
         exit 1
     fi
 fi
