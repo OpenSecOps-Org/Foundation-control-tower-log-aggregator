@@ -1,5 +1,9 @@
 # Change Log
 
+## v1.6.1
+
+- `SECURITY.md` and `README` updated re: OpenSSF Scorecard publication status. See [supply-chain documentation](https://github.com/OpenSecOps-Org/Documentation/blob/main/docs/security/supply-chain.md) §5.5.
+
 ## v1.6.0
     * Converted to OpenSecOps supply-chain framework: hash-pinned dependencies, signed releases, daily CVE scan, Scorecard. See `SECURITY.md`.
     * `boto3` pinned to `1.42.94` (was `1.33.12`) per project-wide pin policy. `cfnresponse` remains AWS Lambda-runtime-managed (unpinned). See [`Documentation/docs/security/supply-chain.md` §5.6 "Runtime-bundled dependencies"](https://github.com/OpenSecOps-Org/Documentation/blob/main/docs/security/supply-chain.md#56-runtime-bundled-dependencies) for the reasoning behind both decisions.
