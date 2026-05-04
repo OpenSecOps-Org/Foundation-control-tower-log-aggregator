@@ -1,5 +1,10 @@
 # Change Log
 
+## v1.6.0
+    * Converted to OpenSecOps supply-chain framework: hash-pinned dependencies, signed releases, daily CVE scan, Scorecard. See `SECURITY.md`.
+    * `boto3` pinned to `1.42.94` (was `1.33.12`) per project-wide pin policy.
+    * `cfnresponse` remains AWS Lambda-runtime-managed (unpinned) per the supply-chain policy in `SUPPLY_CHAIN_SECURITY.md` §5.
+
 ## v1.5.7
     * Updated GitHub remote references in publish.zsh script to use only OpenSecOps-Org, removed Delegat-AB
     * Updated GitHub repository reference in README.md from Delegat-AB to OpenSecOps-Org

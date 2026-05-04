@@ -1,5 +1,7 @@
 # Foundation-control-tower-log-aggregator
 
+[![Daily CVE scan](https://github.com/OpenSecOps-Org/Foundation-control-tower-log-aggregator/actions/workflows/daily-scan.yml/badge.svg)](https://github.com/OpenSecOps-Org/Foundation-control-tower-log-aggregator/actions/workflows/daily-scan.yml) [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/OpenSecOps-Org/Foundation-control-tower-log-aggregator/badge)](https://scorecard.dev/viewer/?uri=github.com/OpenSecOps-Org/Foundation-control-tower-log-aggregator)
+
 <img src="https://github.com/PeterBengtson/control-tower-log-aggregator/blob/main/docs-images/logs.jpg?raw=true." align="right"/>
 SAM project to combine small daily log files into larger daily log files, 
 to make it possible to store them in Glacier without extra overhead, thereby
