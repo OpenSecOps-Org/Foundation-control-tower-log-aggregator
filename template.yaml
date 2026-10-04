@@ -656,5 +656,6 @@ Resources:
     Condition: UseCommonDestinationBucket
     Properties:
       ServiceToken: !GetAtt DashboardBuilderFunction.Arn
+      ServiceTimeout: 300  # Fail a non-responding custom resource after 5 min, not the default hour
       FunctionName: !Ref DashboardBuilderFunction
       BucketListProperty: !Ref OtherBuckets

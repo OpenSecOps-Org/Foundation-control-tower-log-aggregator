@@ -1,5 +1,10 @@
 # Change Log
 
+## v1.6.7
+    * Fix: `DashboardBuilderCustomResource` failed at import on every create or update since v1.6.0, because `cfnresponse` was not bundled with the `dashboard-builder` Lambda. CloudFormation then waited an hour before failing. `cfnresponse` is now bundled and pinned.
+    * Fix: `dashboard-builder` returned its log stream name as PhysicalResourceId, which changes with each new Lambda execution environment. CloudFormation then treated an update as a replacement and sent a Delete for the old ID, and the Delete removes the dashboard. It now keeps a stable ID.
+    * `DashboardBuilderCustomResource` sets `ServiceTimeout: 300`, so a custom resource that does not respond fails the deploy after 5 minutes instead of an hour.
+
 ## v1.6.6
     * Security: bump `urllib3` floor to `>=2.8.0` in `boto3.in` (distributed from canonical `Installer/templates/boto3.in`) to remediate CVE-2026-97687 (HTTPS-proxy TLS configuration ignored or overridden), CVE-2026-97688 (infinite loop on chunked Deflate responses) and CVE-2026-97689 (unbounded chunk-size-line buffering). All three are fixed in urllib3 2.8.0; the previous `>=2.7.0` floor resolved to 2.7.0, which is affected by all three. Locks recompiled with `--upgrade`; other transitive deps refreshed to their latest in-range versions as a side effect (no code or behaviour change).
 

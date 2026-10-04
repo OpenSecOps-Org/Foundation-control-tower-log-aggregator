@@ -202,8 +202,14 @@ REST_VARIABLE = os.environ['REST_VARIABLE']
 s3 = boto3.client('s3')
 cloudwatch = boto3.client('cloudwatch')
 
+# Keep the ID CloudFormation already holds; cfnresponse's default (the log stream name) changes
+# between invocations, which makes every update look like a replacement followed by a Delete,
+# and this function's Delete removes the dashboard.
+FIXED_PHYSICAL_ID = 'dashboard-builder'
+
 
 def lambda_handler(event, context):
+    physical_id = event.get('PhysicalResourceId', FIXED_PHYSICAL_ID)
     try:
         logger.info('Received event: %s', event)
 
@@ -226,7 +232,7 @@ def lambda_handler(event, context):
             cloudwatch.delete_dashboards(DashboardNames=[DASHBOARD_NAME])
 
         # Succeed
-        cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+        cfnresponse.send(event, context, cfnresponse.SUCCESS, {}, physicalResourceId=physical_id)
         # Add a log statement for successful completion
         logger.info('Function execution completed successfully')
 
@@ -234,7 +240,7 @@ def lambda_handler(event, context):
     except Exception as e:
         logger.error('Error occurred: %s', str(e))
         response_data = {'Error': 'Error occurred: {}'.format(str(e))}
-        cfnresponse.send(event, context, cfnresponse.FAILED, response_data)
+        cfnresponse.send(event, context, cfnresponse.FAILED, response_data, physicalResourceId=physical_id)
 
 
 def match_bucket_prefixes(bucket_names):
