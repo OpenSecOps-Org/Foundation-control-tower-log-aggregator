@@ -21,6 +21,12 @@ def lambda_handler(data, _context):
     bucket_name = data['bucket_name']
     files = get_files(data['files'])
 
+    # Files the copy or combine step could not process stay in the source bucket
+    kept = set((data.get('combineMainLogsResult') or {}).get('kept', []))
+    if kept:
+        print(f"Keeping {len(kept)} files that could not be processed: {sorted(kept)}")
+        files = [file_key for file_key in files if file_key not in kept]
+
     if not files:
         print("No files to delete. Returning.")
         return

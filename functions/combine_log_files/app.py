@@ -1,5 +1,5 @@
 import boto3
-from aws_errors import transient_aws_errors
+from aws_errors import is_transient, transient_aws_errors
 import os
 import json
 import time
@@ -46,6 +46,9 @@ def lambda_handler(data, context):
     combine_main_logs_result = data.get('combineMainLogsResult', {})
     continuation_marker = combine_main_logs_result.get('continuationMarker', 0)
 
+    # Files that could not be combined. Delete Originals leaves them in the source bucket.
+    kept = list(combine_main_logs_result.get('kept', []))
+
     if not log_files:
         logger.info("No files specified")
         return {'status': 'no-op'}
@@ -76,7 +79,7 @@ def lambda_handler(data, context):
         elapsed_time = time.time() - start_time
         if (remaining_time - elapsed_time) < 120:  # Less than 2 minutes left
             logger.info(f"Lambda might time out, returning continuationMarker for next invocation: {index}")
-            return {'continuationMarker': index}  # Return the index of the next file to process
+            return {'continuationMarker': index, 'kept': kept}  # Return the index of the next file to process
 
         if not aggregatable(log_file, main_log_type):
             continue
@@ -91,27 +94,43 @@ def lambda_handler(data, context):
         mpu = s3_client.create_multipart_upload(Bucket=TMP_LOGS_BUCKET_NAME, Key=final_key)
             
         part_responses = []
-        # The following is best done in a bucket without versioning enabled, unless you want 
+        unreadable = False
+        # The following is best done in a bucket without versioning enabled, unless you want
         # an enormous number of versions with delete markers after the operation.
         for n, copy_key in enumerate([final_key, log_file]):
             part_number = n + 1
-            copy_response = s3_client.upload_part_copy(
-                Bucket=TMP_LOGS_BUCKET_NAME,
-                Key=final_key,
-                CopySource={
-                    'Bucket': TMP_LOGS_BUCKET_NAME if n == 0 else source_bucket_name, 
-                    'Key': copy_key
-                },
-                PartNumber=part_number,
-                UploadId=mpu['UploadId']
-            )
+            try:
+                copy_response = s3_client.upload_part_copy(
+                    Bucket=TMP_LOGS_BUCKET_NAME,
+                    Key=final_key,
+                    CopySource={
+                        'Bucket': TMP_LOGS_BUCKET_NAME if n == 0 else source_bucket_name,
+                        'Key': copy_key
+                    },
+                    PartNumber=part_number,
+                    UploadId=mpu['UploadId']
+                )
+            except Exception as e:
+                # Only the log file itself (part 2) is kept; trouble with the combined file fails the
+                # run, and nothing is deleted. Throttling is retried by the state machine.
+                if n == 0 or is_transient(e):
+                    raise
+                logger.error(f"Failed to combine {log_file}, keeping it in {source_bucket_name}: {str(e)}")
+                s3_client.abort_multipart_upload(Bucket=TMP_LOGS_BUCKET_NAME, Key=final_key,
+                                                 UploadId=mpu['UploadId'])
+                kept.append(log_file)
+                unreadable = True
+                break
 
             part_responses.append(
                 {
-                    'ETag': copy_response['CopyPartResult']['ETag'], 
+                    'ETag': copy_response['CopyPartResult']['ETag'],
                     'PartNumber': part_number
                 }
             )
+
+        if unreadable:
+            continue
 
         # Finish the multipart upload for this log file to the temp bucket.
         s3_client.complete_multipart_upload(
@@ -130,6 +149,11 @@ def lambda_handler(data, context):
     # All log files have now been added to the dummy file in the temp bucket.
     # Get the size of the result (which includes the +5MB dummy bytes)
     total_bytes = s3_resource.Object(TMP_LOGS_BUCKET_NAME, final_key).content_length
+
+    # Nothing beyond the filler: every file was kept, or none was aggregatable
+    if total_bytes <= FIVE_MB:
+        s3_client.delete_object(Bucket=TMP_LOGS_BUCKET_NAME, Key=final_key)
+        return {'status': 'done', 'kept': kept}
 
     # Initiate the final move of the result from the temp bucket to the chosen destination 
     # bucket, and also store the result using the Standard Infrequent Access storage class.
@@ -169,8 +193,8 @@ def lambda_handler(data, context):
         Key=final_key,
     )
 
-    # Return status
-    return {'status': 'done'}
+    # Return status, and the files kept in the source bucket
+    return {'status': 'done', 'kept': kept}
 
 
 def get_files(thing):

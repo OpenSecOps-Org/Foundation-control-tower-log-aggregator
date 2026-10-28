@@ -34,13 +34,16 @@ def lambda_handler(data, context):
     combine_main_logs_result = data.get('combineMainLogsResult', {})
     continuation_marker = combine_main_logs_result.get('continuationMarker', 0)
 
+    # Files that could not be copied. Delete Originals leaves them in the source bucket.
+    kept = list(combine_main_logs_result.get('kept', []))
+
     if continuation_marker > 0:
         logger.info(f"Continuing operation from index {continuation_marker}")
 
     if not log_files:
         logger.info("No files specified")
         return {'status': 'no-op'}
-    
+
     start_time = time.time()
     remaining_time = context.get_remaining_time_in_millis() / 1000.0  # Convert to seconds
 
@@ -51,7 +54,7 @@ def lambda_handler(data, context):
         elapsed_time = time.time() - start_time
         if (remaining_time - elapsed_time) < 120:  # Less than 2 minutes left
             logger.info(f"Lambda might time out, returning continuationMarker for next invocation: {index}")
-            return {'continuationMarker': index}  # Return the index of the next file to process
+            return {'continuationMarker': index, 'kept': kept}  # Return the index of the next file to process
 
         # Get the basename of the source file
         base_name = os.path.basename(log_file)
@@ -71,17 +74,13 @@ def lambda_handler(data, context):
 
         except Exception as e:
             if is_transient(e):
-                # Retried by the state machine from the same continuation marker. Returning an error status
-                # here would let the state machine go on to delete the originals, including uncopied ones.
-                raise
-            logger.error(f"Failed to copy {log_file}: {str(e)}")
-            # Depending on the requirements, you might want to raise the exception,
-            # return an error status, or handle it in some other way.
-            # For this example, we'll skip the rest of the files and return an error.
-            return {'status': 'error', 'message': str(e)}
+                raise  # retried by the state machine from the same continuation marker
+            # Keep the file: it stays in the source bucket and the other files are still copied
+            logger.error(f"Failed to copy {log_file}, keeping it in {source_bucket_name}: {str(e)}")
+            kept.append(log_file)
 
-    # All files have now been copied. Return status of done.
-    return {'status': 'done'}
+    # All files have now been copied, except those kept. Return status of done.
+    return {'status': 'done', 'kept': kept}
 
 
 def get_files(thing):

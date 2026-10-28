@@ -1,5 +1,9 @@
 # Change Log
 
+## v1.7.1
+    * Fix: no log file is deleted that was not copied or combined. A file that `copy_log_files` or `combine_log_files` cannot process for a reason other than throttling (e.g. access denied, or a file removed in the meantime) is now kept: it is logged, the other files are still processed, and `Delete Originals` leaves it in the source bucket. Before, a failed copy stopped the copy and `Delete Originals` then deleted every original, copied or not; a file that could not be combined failed the whole run.
+    * When every file of a run is kept, the combine step no longer fails on the empty result; it removes its temporary file and finishes.
+
 ## v1.7.0
     * Fix: a copy that S3 throttled (beyond the S3 client's own retries) made `copy_log_files` return an error status, after which the state machine went on to `Delete Originals` and deleted log files that had not been copied. Throttling is now retried from the same continuation marker before anything is deleted.
     * Fix: a throttled listing, delete or manifest read in `delete_originals` left the originals in place (and a throttled manifest read was taken as "no files"); these are now retried.
