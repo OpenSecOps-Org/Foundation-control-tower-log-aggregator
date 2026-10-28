@@ -1,4 +1,5 @@
 import boto3
+from aws_errors import is_transient, transient_aws_errors
 import os
 import json
 import time
@@ -22,6 +23,7 @@ s3_config = Config(
 s3_client = boto3.client('s3', config=s3_config)
 
 
+@transient_aws_errors
 def lambda_handler(data, context):
     date = data['date'].replace("-", "/")
     source_bucket_name = data['bucket_name']
@@ -68,6 +70,10 @@ def lambda_handler(data, context):
             logger.info(f"Successfully copied {log_file} to {dest_bucket_name}/{destination_key}")
 
         except Exception as e:
+            if is_transient(e):
+                # Retried by the state machine from the same continuation marker. Returning an error status
+                # here would let the state machine go on to delete the originals, including uncopied ones.
+                raise
             logger.error(f"Failed to copy {log_file}: {str(e)}")
             # Depending on the requirements, you might want to raise the exception,
             # return an error status, or handle it in some other way.

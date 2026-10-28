@@ -1,6 +1,7 @@
 from calendar import month
 import os
 import boto3
+from aws_errors import transient_aws_errors
 from botocore.config import Config
 
 s3_config = Config(
@@ -10,6 +11,7 @@ s3_config = Config(
 
 client = boto3.client('s3', config=s3_config)
 
+@transient_aws_errors
 def lambda_handler(data, _context):
     bucket_name = data['bucket_name']
     log_type = data['log_type']

@@ -1,7 +1,9 @@
 import boto3
+from aws_errors import transient_aws_errors
 from datetime import date
 from datetime import timedelta
 
+@transient_aws_errors
 def lambda_handler(data, _context):
     s3 = boto3.client('s3')
     all_buckets = s3.list_buckets()

@@ -1,4 +1,5 @@
 import boto3
+from aws_errors import transient_aws_errors
 import os
 import json
 import time
@@ -33,6 +34,7 @@ s3_config = Config(
 s3_client = boto3.client('s3', config=s3_config)
 s3_resource = boto3.resource('s3', config=s3_config)
 
+@transient_aws_errors
 def lambda_handler(data, context):
     source_bucket_name = data['bucket_name']
     dest_bucket_name = DEST_LOGS_BUCKET_NAME or source_bucket_name

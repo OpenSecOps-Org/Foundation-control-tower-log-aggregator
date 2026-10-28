@@ -2,6 +2,7 @@ from calendar import month
 import os
 import json
 import boto3
+from aws_errors import transient_aws_errors
 from botocore.config import Config
 
 TMP_LOGS_BUCKET_NAME = os.environ['TMP_LOGS_BUCKET_NAME']
@@ -16,6 +17,7 @@ s3_config = Config(
 s3_client = boto3.client('s3', config=s3_config)
 
 
+@transient_aws_errors
 def lambda_handler(data, _context):
 
     # If there already is an explicit key, just return it

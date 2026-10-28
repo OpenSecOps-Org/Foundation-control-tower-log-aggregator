@@ -2,6 +2,7 @@ import os
 import json
 import boto3
 from botocore.exceptions import ClientError
+from aws_errors import is_transient, transient_aws_errors
 from botocore.config import Config
 
 
@@ -15,6 +16,7 @@ s3_config = Config(
 s3_client = boto3.client('s3', config=s3_config)
 
 
+@transient_aws_errors
 def lambda_handler(data, _context):
     bucket_name = data['bucket_name']
     files = get_files(data['files'])
@@ -37,6 +39,8 @@ def lambda_handler(data, _context):
                 for version in page.get('Versions', []) + page.get('DeleteMarkers', []):
                     objects_to_delete.append({'Key': file_key, 'VersionId': version['VersionId']})
         except ClientError as e:
+            if is_transient(e):
+                raise  # the state machine retries; a retry lists again what is left
             print(f"An error occurred: {e}")
             return
         
@@ -62,6 +66,8 @@ def lambda_handler(data, _context):
                 if errors:
                     print(f"Errors encountered: {errors}")
     except ClientError as e:
+        if is_transient(e):
+            raise
         print(f"An error occurred during deletion: {e}")
 
     if isinstance(data['files'], str):
@@ -71,6 +77,8 @@ def lambda_handler(data, _context):
                 Key=data['files']
             )
         except ClientError as e:
+            if is_transient(e):
+                raise
             print(f"An error occurred when deleting the manifest file: {e}")
 
 
@@ -86,6 +94,8 @@ def get_files(thing):
         files = json.loads(response['Body'].read())
         return files
     except ClientError as e:
+        if is_transient(e):
+            raise  # not "no files": the originals would be left behind
         print(f"An error occurred when retrieving the file list: {e}")
         return []
 

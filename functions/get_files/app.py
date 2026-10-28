@@ -2,6 +2,7 @@ from calendar import month
 import os
 import json
 import boto3
+from aws_errors import transient_aws_errors
 import random
 from botocore.config import Config
 
@@ -16,6 +17,7 @@ s3_client = boto3.client('s3', config=s3_config)
 s3_resource = boto3.resource('s3', config=s3_config)
 
 
+@transient_aws_errors
 def lambda_handler(data, _context):
     bucket_name = data['bucket_name']
     prefix = data.get('prefix', '')

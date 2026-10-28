@@ -1,6 +1,8 @@
 import boto3
+from aws_errors import transient_aws_errors
 from datetime import datetime, timedelta
 
+@transient_aws_errors
 def lambda_handler(data, _context):
     start_date_str = data['start_date']
     end_date_str = data['end_date']

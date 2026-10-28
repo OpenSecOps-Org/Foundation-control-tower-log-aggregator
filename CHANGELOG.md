@@ -1,5 +1,12 @@
 # Change Log
 
+## v1.7.0
+    * Fix: a copy that S3 throttled (beyond the S3 client's own retries) made `copy_log_files` return an error status, after which the state machine went on to `Delete Originals` and deleted log files that had not been copied. Throttling is now retried from the same continuation marker before anything is deleted.
+    * Fix: a throttled listing, delete or manifest read in `delete_originals` left the originals in place (and a throttled manifest read was taken as "no files"); these are now retried.
+    * Retries are now driven by named errors. The Lambdas raise throttling, AWS-side failures (5xx) and connection problems as `AWSTransientError`, keeping the original error as its cause, through the `aws_errors` module (distributed by the Installer, packaged in the new `AwsErrorsLayer`). Every Lambda step retries `AWSTransientError`, `States.Timeout` and the Lambda service errors: 5 seconds, doubling, at most 300 seconds apart, full jitter, 20 attempts. `Compute Date List` had no retry; it now has the same rule.
+    * Every retry rule has full jitter and waits at most 300 seconds. The rule for Lambda concurrency throttling keeps its 100 attempts, now about 4 hours in all instead of growing fivefold per attempt without bound.
+    * New offline unit tests for the retry rules and the error handling.
+
 ## v1.6.7
     * Fix: `DashboardBuilderCustomResource` failed at import on every create or update since v1.6.0, because `cfnresponse` was not bundled with the `dashboard-builder` Lambda. CloudFormation then waited an hour before failing. `cfnresponse` is now bundled and pinned.
     * Fix: `dashboard-builder` returned its log stream name as PhysicalResourceId, which changes with each new Lambda execution environment. CloudFormation then treated an update as a replacement and sent a Delete for the old ID, and the Delete removes the dashboard. It now keeps a stable ID.
